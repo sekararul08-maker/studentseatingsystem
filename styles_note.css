@@ -1,0 +1,32 @@
+/* ============================================================================
+   CSS — Smart Examination Hall Seating Allocation System
+
+   HONEST NOTE: there is no hand-written .css file anywhere in this project.
+
+   Styling is done entirely with Tailwind CSS utility classes written
+   directly as `className="..."` strings inside the JSX files (see
+   javascript_all.js — every page/component file uses this pattern, e.g.
+   `<div className="bg-white rounded-lg shadow p-4 border-l-4">`).
+
+   Tailwind itself is loaded via CDN script tag in frontend/index.html
+   (see markup.html), which generates the actual CSS rules in the browser
+   at runtime from a small inline JS config block — also not a .css file,
+   it's JavaScript (see the <script>tailwind.config = {...}</script> block
+   in markup.html).
+
+   If you want a REAL, separate stylesheet instead of Tailwind's CDN/JIT
+   approach (e.g. for a production build with a compiled Tailwind CSS
+   file, or hand-written custom CSS), that would be a new addition on top
+   of what was built — it does not exist in the current codebase.
+
+   For reference, this is the color palette used throughout the utility
+   classes (spec section 30 — navy blue, white, light gray, blue, green
+   for success, red for errors, orange for warnings):
+
+     navy   -> #0f1f3d   (custom Tailwind color, configured in index.html)
+     brand  -> #1e3a8a   (custom Tailwind color, configured in index.html)
+     green  -> Tailwind's built-in green-100 / green-600 / green-700
+     red    -> Tailwind's built-in red-100 / red-600 / red-700
+     orange -> Tailwind's built-in orange-100 / orange-500 / orange-700
+     gray   -> Tailwind's built-in gray-50 / gray-100 / gray-400 / gray-500
+   ============================================================================ */

@@ -1,0 +1,33 @@
+<!-- ============================================================================ -->
+<!-- HTML — Smart Examination Hall Seating Allocation System -->
+<!-- Only one hand-written HTML file in this project: frontend/index.html -->
+<!-- The React app mounts into the #root div here; everything else in the -->
+<!-- frontend is JSX, which compiles to HTML at render time (see javascript_all.js) -->
+<!-- ============================================================================ -->
+
+<!-- ==== FILE: frontend/index.html ==== -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Examination Hall Seating Allocation System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              navy: "#0f1f3d",
+              brand: "#1e3a8a",
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body class="bg-gray-50 text-gray-800">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

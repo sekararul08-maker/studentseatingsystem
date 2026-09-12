@@ -1,0 +1,82 @@
+// ============================================================================
+// JSON — Smart Examination Hall Seating Allocation System
+// NOTE: strict JSON does not support comments. These '//' markers are for
+// readability when splitting this file back into two real package.json
+// files — delete the comment lines before using either block as actual JSON.
+// ============================================================================
+
+// ==== FILE: backend/package.json ====
+{
+  "name": "smart-examination-backend",
+  "version": "1.0.0",
+  "description": "Backend for the Smart Examination Hall Seating Allocation System",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev --name init",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:seed": "node prisma/seed.js",
+    "prisma:studio": "prisma studio",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.19.1",
+    "argon2": "^0.40.3",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "express-validator": "^7.2.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "pdfkit": "^0.15.0",
+    "qrcode": "^1.5.4",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.4",
+    "prisma": "^5.19.1",
+    "supertest": "^7.0.0"
+  }
+}
+
+
+// ==== FILE: frontend/package.json ====
+{
+  "name": "smart-examination-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "axios": "^1.7.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.6"
+  }
+}
+
+
+// ==== NOTE: additional dependency required (see PACKAGE_JSON_ADDITION.txt) ====
+// Add this to backend/package.json 'dependencies' (used by registerParser.js
+// to parse .csv student registers):
+//   "csv-parse": "^5.5.6"

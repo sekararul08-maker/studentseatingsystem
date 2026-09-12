@@ -1,0 +1,63 @@
+# ============================================================================
+# YAML — Smart Examination Hall Seating Allocation System
+# Only one YAML file in this project: docker-compose.yml (project root)
+# ============================================================================
+
+# ==== FILE: docker-compose.yml ====
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: smart_exam_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: smart_exam_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smart_exam_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/smart_exam_db?schema=public
+      JWT_SECRET: change_this_in_production
+      JWT_EXPIRES_IN: 8h
+      PORT: 5000
+      NODE_ENV: production
+      FRONTEND_URL: http://localhost:5173
+    ports:
+      - "5000:5000"
+    command: >
+      sh -c "npx prisma migrate deploy &&
+             node prisma/seed.js &&
+             node src/server.js"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: smart_exam_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  postgres_data:

@@ -1,0 +1,318 @@
+// ============================================================================
+// PRISMA SCHEMA LANGUAGE — Smart Examination Hall Seating Allocation System
+// This is the only file written in Prisma's schema DSL. Path:
+// backend/prisma/schema.prisma
+// ============================================================================
+
+// ============================================================================
+// Smart Examination Hall Seating Allocation System
+// Prisma schema — PostgreSQL
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// ENUMS
+// ----------------------------------------------------------------------------
+
+enum Session {
+  FN // Forenoon
+  AN // Afternoon
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum StaffAvailabilityStatus {
+  AVAILABLE
+  UNAVAILABLE
+  LEAVE
+}
+
+enum HallStatus {
+  ACTIVE
+  MAINTENANCE
+  DISABLED
+}
+
+enum SeatingStrategy {
+  SEPARATION // Strategy A - departments kept in separate halls where possible
+  MIXED      // Strategy B - departments mixed freely within a hall
+  ALTERNATING // Strategy C - departments alternate seat by seat
+}
+
+enum AllocationStatus {
+  DRAFT       // preview only, not yet confirmed
+  CONFIRMED   // saved permanently
+  REGENERATED // replaced a previous confirmed allocation
+}
+
+enum DutyStatus {
+  ASSIGNED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum Role {
+  ADMIN
+  STAFF
+  STUDENT
+}
+
+// ----------------------------------------------------------------------------
+// CORE IDENTITY
+// ----------------------------------------------------------------------------
+
+model Admin {
+  id           String   @id @default(uuid())
+  instituteId  String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  auditLogs AuditLog[]
+
+  @@map("admins")
+}
+
+model Department {
+  id        String     @id @default(uuid())
+  code      String     @unique // e.g. CSE
+  name      String     // e.g. Computer Science and Engineering
+  status    UserStatus @default(ACTIVE)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  students        Student[]
+  staff           Staff[]
+  examDepartments ExamDepartment[]
+
+  @@index([code])
+  @@map("departments")
+}
+
+model Staff {
+  id           String     @id @default(uuid())
+  staffId      String     @unique // login id, e.g. STF102
+  name         String
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  email        String?    @unique
+  mobile       String?
+  passwordHash String
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  availability      StaffAvailability[]
+  invigilationDuties InvigilationDuty[]
+  auditLogs         AuditLog[]
+
+  @@index([departmentId])
+  @@map("staff")
+}
+
+model Student {
+  id             String     @id @default(uuid())
+  registerNumber String     @unique
+  name           String
+  departmentId   String
+  department     Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  year           String     // e.g. "III"
+  section        String?
+  batch          String?
+  email          String?
+  mobile         String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  examStudents ExamStudent[]
+  allocations  SeatingAllocation[]
+
+  @@index([departmentId])
+  @@index([registerNumber])
+  @@map("students")
+}
+
+// ----------------------------------------------------------------------------
+// HALLS
+// ----------------------------------------------------------------------------
+
+model Hall {
+  id         String     @id @default(uuid())
+  hallNumber String     @unique // e.g. "Hall 101"
+  building   String
+  floor      String
+  roomNumber String?
+  capacity   Int
+  rows       Int
+  columns    Int
+  status     HallStatus @default(ACTIVE)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  allocations       SeatingAllocation[]
+  invigilationDuties InvigilationDuty[]
+
+  @@index([status])
+  @@map("halls")
+}
+
+// ----------------------------------------------------------------------------
+// EXAMS
+// ----------------------------------------------------------------------------
+
+model Exam {
+  id           String   @id @default(uuid())
+  examName     String
+  subjectCode  String
+  subjectName  String
+  date         DateTime @db.Date
+  session      Session
+  startTime    String   // "09:00"
+  endTime      String   // "12:00"
+  duration     Int      // minutes
+  regulation   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  examDepartments    ExamDepartment[]
+  examStudents       ExamStudent[]
+  allocations        SeatingAllocation[]
+  invigilationDuties InvigilationDuty[]
+
+  // one exam cannot be created twice for the same subject/date/session
+  @@unique([subjectCode, date, session])
+  @@index([date, session])
+  @@map("exams")
+}
+
+// Which departments are writing a given exam
+model ExamDepartment {
+  id           String     @id @default(uuid())
+  examId       String
+  exam         Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, departmentId])
+  @@map("exam_departments")
+}
+
+// Explicit per-student eligibility for an exam (derived from department+year,
+// but stored explicitly so partial cohorts / exclusions are supported)
+model ExamStudent {
+  id        String   @id @default(uuid())
+  examId    String
+  exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([examId, studentId])
+  @@map("exam_students")
+}
+
+// ----------------------------------------------------------------------------
+// ALLOCATION
+// ----------------------------------------------------------------------------
+
+model SeatingAllocation {
+  id         String            @id @default(uuid())
+  examId     String
+  exam       Exam              @relation(fields: [examId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  hallId     String
+  hall       Hall              @relation(fields: [hallId], references: [id], onDelete: Restrict)
+  row        Int
+  column     Int
+  seatNumber String            // e.g. "A1"
+  status     AllocationStatus  @default(CONFIRMED)
+  createdAt  DateTime          @default(now())
+
+  // a student can only have ONE seat per exam
+  @@unique([examId, studentId])
+  // a seat in a hall can only be used once per exam
+  @@unique([examId, hallId, seatNumber])
+  @@index([examId, hallId])
+  @@map("seating_allocations")
+}
+
+model StaffAvailability {
+  id        String                   @id @default(uuid())
+  staffId   String
+  staff     Staff                    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  date      DateTime                 @db.Date
+  session   Session
+  status    StaffAvailabilityStatus  @default(AVAILABLE)
+  createdAt DateTime                 @default(now())
+  updatedAt DateTime                 @updatedAt
+
+  @@unique([staffId, date, session])
+  @@map("staff_availability")
+}
+
+model InvigilationDuty {
+  id            String     @id @default(uuid())
+  staffId       String
+  staff         Staff      @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  examId        String
+  exam          Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
+  hallId        String
+  hall          Hall       @relation(fields: [hallId], references: [id], onDelete: Restrict)
+  date          DateTime   @db.Date
+  session       Session
+  reportingTime String
+  status        DutyStatus @default(ASSIGNED)
+  createdAt     DateTime   @default(now())
+
+  // a staff member cannot be assigned to two halls at once for the same exam/date/session
+  @@unique([staffId, date, session])
+  @@index([examId, hallId])
+  @@map("invigilation_duties")
+}
+
+// ----------------------------------------------------------------------------
+// SYSTEM CONFIG (avoids hardcoded business rules — see point 48 of spec)
+// ----------------------------------------------------------------------------
+
+model SystemSetting {
+  id    String @id @default(uuid())
+  key   String @unique // e.g. "INVIGILATORS_PER_HALL", "DEFAULT_SEATING_STRATEGY"
+  value String // stored as string, parsed by consumer
+
+  @@map("system_settings")
+}
+
+// ----------------------------------------------------------------------------
+// AUDIT LOG
+// ----------------------------------------------------------------------------
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?  // may be admin.id or staff.id
+  admin       Admin?   @relation(fields: [adminId], references: [id])
+  adminId     String?
+  staff       Staff?   @relation(fields: [staffRefId], references: [id])
+  staffRefId  String?
+  role        Role
+  action      String
+  description String
+  ipAddress   String?
+  timestamp   DateTime @default(now())
+
+  @@index([timestamp])
+  @@map("audit_logs")
+}
